@@ -1,0 +1,485 @@
+install.packages("tidycensus")
+install.packages("tidyverse")
+install.packages("plotly")
+install.packages("mapview")
+
+
+library("tidycensus")
+library("tidyverse")
+library("mapview")
+
+census_api_key("YOUR KEY HERE", install = TRUE)
+
+readRenviron("~/.Renviron")
+
+#-------
+
+vars_acs <- load_variables(2023, "acs5")
+View(vars_acs)
+
+#-------
+#putting together variables for seeing race pop ests
+race_vars <- c(
+  White = "B03002_003",
+  Black = "B03002_004",
+  AIAN = "B03002_005",
+  Asian = "B03002_006",
+  NHPI = "B03002_007",
+  HL = "B03002_012",
+  Other_race = "B02001_007",
+  Reported_Two_Or_More = "B02001_008"
+)
+#organizing it to be for Louisville
+jc_race <- get_acs(
+  geography = "county",
+  state = "KY",
+  county = "Jefferson",
+  variables = race_vars,
+  summary_var = "B03002_001",
+  year = 2023
+)
+#view the totals
+view (jc_race)
+
+#--------
+#the race totals by block group
+jc_race_bg <- get_acs(
+  geography = "block group",
+  state = "KY",
+  county = "Jefferson",
+  variables = race_vars,
+  summary_var = "B03002_001",
+  year = 2023
+)
+
+view (jc_race_bg)
+
+
+ky_sex_agegroup <- get_estimates(
+  geography = "county",
+  state = "KY",
+  county = "Jefferson",
+  product = "characteristics",
+  breakdown = c("SEX", "AGEGROUP"),
+  breakdown_labels = TRUE,
+  year = 2022
+) 
+
+view(ky_sex_agegroup)
+
+
+#initial step to get the info ready and view what is there
+
+ky_sex_agegroupfiltered <- filter(ky_sex_agegroup, str_detect(AGEGROUP, "^Age"), 
+                                  SEX != "Both sexes") %>%
+  mutate(value = ifelse(SEX == "Male", -value, value))
+#removes both sexes information from the sex and age group breakdowns
+
+ggplot(ky_sex_agegroupfiltered, aes(x = value, y = AGEGROUP, fill = SEX)) + 
+  geom_col()
+#function to actually create the graph and view what needs to be changed
+
+
+
+
+#------
+#---- age totals for each race by sex
+race_age_sex_vars <- c(
+  White_Male_Under5 = "B01001A_003",
+  White_Male_5to9 = "B01001A_004",
+  White_Male_10to14 = "B01001A_005",
+  White_Male_15to17 = "B01001A_006",
+  White_Male_18to19 = "B01001A_007",
+  White_Male_20to24 = "B01001A_008",
+  White_Male_25to29 = "B01001A_009",
+  White_Male_30to34 = "B01001A_010",
+  White_Male_35to44 = "B01001A_011",
+  White_Male_45to54 = "B01001A_012",
+  White_Male_55to64 = "B01001A_013",
+  White_Male_65to74 = "B01001A_014",
+  White_Male_75to84 = "B01001A_015",
+  White_Male_85plus = "B01001A_016",
+  White_Female_Under5 = "B01001A_018",
+  White_Female_5to9 = "B01001A_019",
+  White_Female_10to14 = "B01001A_020",
+  White_Female_15to17 = "B01001A_021",
+  White_Female_18to19 = "B01001A_022",
+  White_Female_20to24 = "B01001A_023",
+  White_Female_25to29 = "B01001A_024",
+  White_Female_30to34 = "B01001A_025",
+  White_Female_35to44 = "B01001A_026",
+  White_Female_45to54 = "B01001A_027",
+  White_Female_55to64 = "B01001A_028",
+  White_Female_65to74 = "B01001A_029",
+  White_Female_75to84 = "B01001A_030",
+  White_Female_85plus = "B01001A_031",
+  Black_Male_Under5 = "B01001B_003", 
+  Black_Male_5to9 = "B01001B_004",
+  Black_Male_10to14 = "B01001B_005",
+  Black_Male_15to17 = "B01001B_006",
+  Black_Male_18to19 = "B01001B_007",
+  Black_Male_20to24 = "B01001B_008",
+  Black_Male_25to29 = "B01001B_009",
+  Black_Male_30to34 = "B01001B_010",
+  Black_Male_35to44 = "B01001B_011",
+  Black_Male_45to54 = "B01001B_012",
+  Black_Male_55to64 = "B01001B_013",
+  Black_Male_65to75 = "B01001B_014",
+  Black_Male_75to84 = "B01001B_015",
+  Black_Male_85plus = "B01001B_016",
+  Black_Female_Under5 = "B01001B_018",
+  Black_Female_5to9 = "B01001B_019",
+  Black_Female_10to14 = "B01001B_020",
+  Black_Female_15to17 = "B01001B_021",
+  Black_Female_18to19 = "B01001B_022",
+  Black_Female_20to24 = "B01001B_023",
+  Black_Female_25to29 = "B01001B_024",
+  Black_Female_30to34 = "B01001B_025",
+  Black_Female_35to44 = "B01001B_026",
+  Black_Female_45to54 = "B01001B_027",
+  Black_Female_55to64 = "B01001B_028",
+  Black_Female_65to74 = "B01001B_029",
+  Black_Female_75to84 = "B01001B_030",
+  Black_Female_85plus = "B01001B_031",
+  AIAN_Male_Under5 = "B01001C_003",
+  AIAN_Male_5to9 = "B01001C_004",
+  AIAN_Male_10to14 = "B01001C_005",
+  AIAN_Male_15to17 = "B01001C_006",
+  AIAN_Male_18to19 = "B01001C_007",
+  AIAN_Male_20to24 = "B01001C_008",
+  AIAN_Male_25to29 = "B01001C_009",
+  AIAN_Male_30to34 = "B01001C_010",
+  AIAN_Male_35to44 = "B01001C_011",
+  AIAN_Male_45to54 = "B01001C_012",
+  AIAN_Male_55to64 = "B01001C_013",
+  AIAN_Male_65to74 = "B01001C_014",
+  AIAN_Male_75to84 = "B01001C_015",
+  AIAN_Male_85plus = "B01001C_016",
+  AIAN_Female_Under5 = "B01001C_018",
+  AIAN_Female_5to9 = "B01001C_019",
+  AIAN_Female_10to14 = "B01001C_020",
+  AIAN_Female_15to17 = "B01001C_021",
+  AIAN_Female_18to19 = "B01001C_022",
+  AIAN_Female_20to24 = "B01001C_023",
+  AIAN_Female_25to29 = "B01001C_024",
+  AIAN_Female_30to34 = "B01001C_025",
+  AIAN_Female_35to44 = "B01001C_026",
+  AIAN_Female_45to54 = "B01001C_027",
+  AIAN_Female_55to64 = "B01001C_028",
+  AIAN_Female_65to74 = "B01001C_029",
+  AIAN_Female_75to84 = "B01001C_030",
+  AIAN_Female_85plus = "B01001C_031",
+  Asian_Male_Under5 = "B01001D_003",
+  Asian_Male_5to9 = "B01001D_004",
+  Asian_Male_10to14 = "B01001D_005",
+  Asian_Male_15to17 = "B01001D_006",
+  Asian_Male_18to19 = "B01001D_007",
+  Asian_Male_20to24 = "B01001D_008",
+  Asian_Male_25to29 = "B01001D_009",
+  Asian_Male_30to34 = "B01001D_010",
+  Asian_Male_35to44 = "B01001D_011",
+  Asian_Male_45to54 = "B01001D_012",
+  Asian_Male_55to64 = "B01001D_013",
+  Asian_Male_65to74 = "B01001D_014",
+  Asian_Male_75to84 = "B01001D_015",
+  Asian_Male_85plus = "B01001D_016",
+  Asian_Female_Under5 = "B01001D_018",
+  Asian_Female_5to9 = "B01001D_019",
+  Asian_Female_10to14 = "B01001D_020",
+  Asian_Female_15to17 = "B01001D_021",
+  Asian_Female_18to19 = "B01001D_022",
+  Asian_Female_20to24 = "B01001D_023",
+  Asian_Female_25to29 = "B01001D_024",
+  Asian_Female_30to34 = "B01001D_025",
+  Asian_Female_35to44 = "B01001D_026",
+  Asian_Female_45to54 = "B01001D_027",
+  Asian_Female_55to64 = "B01001D_028",
+  Asian_Female_65to74 = "B01001D_029",
+  Asian_Female_75to84 = "B01001D_030",
+  Asian_Female_85plus = "B01001D_031",
+  NHPI_Male_Under5 = "B01001E_003",
+  NHPI_Male_5to9 = "B01001E_004",
+  NHPI_Male_10to14 = "B01001E_005",
+  NHPI_Male_15to17 = "B01001E_006",
+  NHPI_Male_18to19 = "B01001E_007",
+  NHPI_Male_20to24 = "B01001E_008",
+  NHPI_Male_25to29 = "B01001E_009",
+  NHPI_Male_30to34 = "B01001E_010",
+  NHPI_Male_35to44 = "B01001E_011",
+  NHPI_Male_45to54 = "B01001E_012",
+  NHPI_Male_55to64 = "B01001E_013",
+  NHPI_Male_65to74 = "B01001E_014",
+  NHPI_Male_75to84 = "B01001E_015",
+  NHPI_Male_85plus = "B01001E_016",
+  NHPI_Female_Under5 = "B01001E_018",
+  NHPI_Female_5to9 = "B01001E_019",
+  NHPI_Female_10to14 = "B01001E_020",
+  NHPI_Female_15to17 = "B01001E_021",
+  NHPI_Female_18to19 = "B01001E_022",
+  NHPI_Female_20to24 = "B01001E_023",
+  NHPI_Female_25to29 = "B01001E_024",
+  NHPI_Female_30to34 = "B01001E_025",
+  NHPI_Female_35to44 = "B01001E_026",
+  NHPI_Female_45to54 = "B01001E_027",
+  NHPI_Female_55to64 = "B01001E_028",
+  NHPI_Female_65to74 = "B01001E_029",
+  NHPI_Female_75to84 = "B01001E_030",
+  NHPI_Female_85plus = "B01001E_031",
+  HispanicOrLatino_Male_Under5 = "B01001I_003",
+  HispanicOrLatino_Male_5to9 = "B01001I_004",
+  HispanicOrLatino_Male_10to14 = "B01001I_005",
+  HispanicOrLatino_Male_15to17 = "B01001I_006",
+  HispanicOrLatino_Male_18to19 = "B01001I_007",
+  HispanicOrLatino_Male_20to24 = "B01001I_008",
+  HispanicOrLatino_Male_25to29 = "B01001I_009",
+  HispanisOrLatino_Male_30to34 = "B01001I_010",
+  HispanicOrLatino_Male_35to44 = "B01001I_011",
+  HispanicOrLatino_Male_45to54 = "B01001I_012",
+  HispanicOrLatino_Male_55to64 = "B01001I_013",
+  HispanicOrLatino_Male_65to74 = "B01001I_014",
+  HispanicOrLatino_Male_75to84 = "B01001I_015",
+  HispanicOrLatino_Male_85plus = "B01001I_016",
+  HispanicOrLatino_Female_Under5 = "B01001I_018",
+  HispanicOrLatino_Female_5to9 = "B01001I_019",
+  HispanisOrLatino_Female_10to14 = "B01001I_020",
+  HispanicOrLatino_Female_15to17 = "B01001I_021",
+  HispanicOrLatino_Female_18to19 = "B01001I_022",
+  HispanicOrLatino_Female_20to24 = "B01001I_023",
+  HispanicOrLatino_Female_25to29 = "B01001I_024",
+  HispanicOrLatino_Female_30to34 = "B01001I_025",
+  HispanicOrLatino_Female_35to44 = "B01001I_026",
+  HispanicOrLatino_Female_45to54 = "B01001I_027",
+  HispanicOrLatino_Female_55to64 = "B01001I_028",
+  HispanicOrLatino_Female_65to74 = "B01001I_029",
+  HispanicOrLatino_Female_75to84 = "B01001I_030",
+  HispanicOrLatino_Female_85plus = "B01001I_031",
+  Other_Male_Under5 = "B01001F_003",
+  Other_Male_5to9 = "B01001F_004",
+  Other_Male_10to14 = "B01001F_005",
+  Other_Male_15to17 = "B01001F_006",
+  Other_Male_18to19 = "B01001F_007",
+  Other_Male_20to24 = "B01001F_008",
+  Other_Male_25to29 = "B01001F_009",
+  Other_Male_30to34 = "B01001F_010",
+  Other_Male_35to44 = "B01001F_011",
+  Other_Male_45to54 = "B01001F_012",
+  Other_Male_55to64 = "B01001F_013",
+  Other_Male_65to74 = "B01001F_014",
+  Other_Male_75to84 = "B01001F_015",
+  Other_Male_85plus = "B01001F_016",
+  Other_Female_Under5 = "B01001F_018",
+  Other_Female_5to9 = "B01001F_019",
+  Other_Female_10to14 = "B01001F_020",
+  Other_Female_15to17 = "B01001F_021",
+  Other_Female_18to19 = "B01001F_022",
+  Other_Female_20to24 = "B01001F_023",
+  Other_Female_25to29 = "B01001F_024",
+  Other_Female_30to34 = "B01001F_025",
+  Other_Female_35to44 = "B01001F_026",
+  Other_Female_45to54 = "B01001F_027",
+  Other_Female_55to64 = "B01001F_028",
+  Other_Female_65to74 = "B01001F_029",
+  Other_Female_75to84 = "B01001F_030",
+  Other_Female_85plus = "B01001F_031"
+)
+
+race_age_sex_data <- get_acs(
+  geography = "county", 
+  state = "KY",
+  county = "Jefferson",
+  variables = race_age_sex_vars,
+  year = 2023,
+  survey = "acs5"
+)
+#view the totals
+view(race_age_sex_data)
+
+#------
+#all women within childbearing years - 15 to 44
+all_childbearing_years_vars <- c(
+  Female_15to17 = "B01001_030",
+  Female_18to19 = "B01001_031",
+  Female_20 = "B01001_032",
+  Female_21 = "B01001_033",
+  Female_22to24 = "B01001_034",
+  Female_25to29 = "B01001_035",
+  Female_30to34 = "B01001_036",
+  Female_35to39 = "B01001_037",
+  Female_40to44 = "B01001_038"
+)
+
+all_childbearing_data <- get_acs(
+  geography = "county",
+  state = "KY",
+  county = "Jefferson",
+  variables = all_childbearing_years_vars,
+  year = 2023,
+  survey = "acs5"
+)
+
+#Totals for the data
+view(all_childbearing_data)
+
+#Childbearing years by race - women aged 15-44
+black_childbearing_years_vars <- c(
+  Black_Female_15to17 = "B01001B_021",
+  Black_Female_18to19 = "B01001B_022",
+  Black_Female_20to24 = "B01001B_023",
+  Black_Female_25to29 = "B01001B_024",
+  Black_Female_30to34 = "B01001B_025",
+  Black_Female_35to44 = "B01001B_026"
+)
+
+# White Women (Ages 15-44)
+white_childbearing_years_vars <- c(
+  White_Female_15to17 = "B01001A_021",
+  White_Female_18to19 = "B01001A_022",
+  White_Female_20to24 = "B01001A_023",
+  White_Female_25to29 = "B01001A_024",
+  White_Female_30to34 = "B01001A_025",
+  White_Female_35to44 = "B01001A_026"
+)
+
+# Asian Women (Ages 15-44)
+asian_childbearing_years_vars <- c(
+  Asian_Female_15to17 = "B01001D_021",
+  Asian_Female_18to19 = "B01001D_022",
+  Asian_Female_20to24 = "B01001D_023",
+  Asian_Female_25to29 = "B01001D_024",
+  Asian_Female_30to34 = "B01001D_025",
+  Asian_Female_35to44 = "B01001D_026"
+)
+
+# American Indian/Alaska Native Women (Ages 15-44)
+aian_childbearing_years_vars <- c(
+  AIAN_Female_15to17 = "B01001C_021",
+  AIAN_Female_18to19 = "B01001C_022",
+  AIAN_Female_20to24 = "B01001C_023",
+  AIAN_Female_25to29 = "B01001C_024",
+  AIAN_Female_30to34 = "B01001C_025",
+  AIAN_Female_35to44 = "B01001C_026"
+)
+
+# Native Hawaiian/Pacific Islander Women (Ages 15-44)
+nhpi_childbearing_years_vars <- c(
+  NHPI_Female_15to17 = "B01001E_021",
+  NHPI_Female_18to19 = "B01001E_022",
+  NHPI_Female_20to24 = "B01001E_023",
+  NHPI_Female_25to29 = "B01001E_024",
+  NHPI_Female_30to34 = "B01001E_025",
+  NHPI_Female_35to44 = "B01001E_026"
+)
+
+# Other Women (Ages 15-44)
+other_childbearing_years_vars <- c(
+  Other_Female_15to17 = "B01001F_021",
+  Other_Female_18to19 = "B01001F_022",
+  Other_Female_20to24 = "B01001F_023",
+  Other_Female_25to29 = "B01001F_024",
+  Other_Female_30to34 = "B01001F_025",
+  Other_Female_35to44 = "B01001F_026"
+)
+
+# Two or More Races Women (Ages 15-44)
+two_or_more_childbearing_years_vars <- c(
+  TwoOrMore_Female_15to17 = "B01001G_021",
+  TwoOrMore_Female_18to19 = "B01001G_022",
+  TwoOrMore_Female_20to24 = "B01001G_023",
+  TwoOrMore_Female_25to29 = "B01001G_024",
+  TwoOrMore_Female_30to34 = "B01001G_025",
+  TwoOrMore_Female_35to44 = "B01001G_026"
+)
+  
+#Hispanic Women (Ages 15-44)
+HispanicOrLatino_childbearing_years_vars <- c(
+  HispanicOrLatino_Female_15to17 = "B01001I_021",
+  HispanicOrLatino_Female_18to19 = "B01001I_022",
+  HispanicOrLatino_Female_20to24 = "B01001I_023",
+  HispanicOrLatino_Female_25to29 = "B01001I_024",
+  HispanicOrLatino_Female_30to34 = "B01001I_025",
+  HispanicOrLatino_Female_35to44 = "B01001I_026"
+)
+
+
+# Get the data from the ACS 5-Year Estimates for Women 15-44 across multiple races
+childbearing_data <- get_acs(
+  geography = "county",
+  state = "KY",
+  county = "Jefferson",
+  variables = c(black_childbearing_years_vars, white_childbearing_years_vars, asian_childbearing_years_vars, 
+                aian_childbearing_years_vars, nhpi_childbearing_years_vars, other_childbearing_years_vars, 
+                two_or_more_childbearing_years_vars, HispanicOrLatino_childbearing_years_vars),
+  year = 2023,
+  survey = "acs5"
+)
+
+#Totals for the data
+view(childbearing_data)
+
+
+#example of visualization -- this one is totals for Black pop in different census tracts
+#Census tracts 
+Race_data_visualization <- get_acs(
+  geography = "tract",
+  state = "KY",
+  county = "Jefferson",
+  variables = "B03002_004",
+  year = 2023,
+  survey = "acs5",
+  geometry = TRUE
+)
+
+mapview(Brace_data_visualization, zcol = "estimate")
+
+#starting to put together race data to make it into a map
+lou_race <- get_acs(
+  geography = "tract",
+  variables = c(
+    White = "B03002_003",
+    Black = "B03002_004",
+    AIAN = "B03002_005",
+    Asian = "B03002_006",
+    NHPI = "B03002_007",
+    HL = "B03002_012",
+    Other_race = "B02001_007",
+    Reported_Two_Or_More = "B02001_008"
+  ),
+  state = "KY",
+  county = "Jefferson",
+  year = 2023,
+  geometry = TRUE
+)
+
+#same info but made wide as it is better for GIS
+lou_race_wide <- get_acs(
+  geography = "tract",
+  variables = c(
+    White = "B03002_003",
+    Black = "B03002_004",
+    AIAN = "B03002_005",
+    Asian = "B03002_006",
+    NHPI = "B03002_007",
+    HispanicorLatino = "B03002_012",
+    Other_race = "B02001_007",
+    Reported_Two_Or_More = "B02001_008"
+  ),
+  state = "KY",
+  county = "Jefferson",
+  year = 2023,
+  geometry = TRUE,
+  output = "wide"
+)
+
+
+ggplot(lou_race, aes(fill = estimate)) +
+  geom_sf(color = NA) +
+  theme_void() +
+  scale_fill_viridis_c(option = "rocket") +
+  facet_wrap(~variable) +
+  labs(title = "Race by census tract",
+       subtitle = "Louisville, Kentucky",
+       fill = "ACS estimate (%)",
+       caption = "2018-2023 ACS | tideycensus R package")
+
+
+
