@@ -35,7 +35,7 @@ jc_race <- get_acs(
   state = "KY",
   county = "Jefferson",
   variables = race_vars,
-  summary_var = "B03003_001",
+  summary_var = "B01003_001",
   year = 2023
 )
 #view the totals
